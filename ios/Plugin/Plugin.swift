@@ -5,8 +5,21 @@ import Speech
 @objc(SpeechRecognition)
 public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
 
-    public let identifier = "SpeechRecognitionPlugin" 
-    public let jsName = "SpeechRecognition" 
+    // --- Capacitor 8 SPM 注册标识符 ---
+    public let identifier = "SpeechRecognitionPlugin"
+    public let jsName = "SpeechRecognition"
+    
+    // --- 桥接方法映射 (替代了原来的 .m 文件) ---
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getSupportedLanguages", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isListening", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "checkPermissions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestPermissions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "removeAllListeners", returnType: CAPPluginReturnPromise)
+    ]
 
     let defaultMatches = 5
     let messageMissingPermission = "Missing permission"
@@ -77,7 +90,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
                       return
                 }
             } catch {
-
+                // Ignore initial session errors
             }
 
             self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -107,7 +120,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
                     }
 
                     if result!.isFinal {
-                        self.audioEngine!.stop()
+                        self.audioEngine?.stop()
                         self.audioEngine?.inputNode.removeTap(onBus: 0)
                         self.notifyListeners("listeningState", data: ["status": "stopped"])
                         self.recognitionTask = nil
@@ -116,7 +129,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
                 }
 
                 if error != nil {
-                    self.audioEngine!.stop()
+                    self.audioEngine?.stop()
                     self.audioEngine?.inputNode.removeTap(onBus: 0)
                     self.recognitionRequest = nil
                     self.recognitionTask = nil
@@ -143,7 +156,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func stop(_ call: CAPPluginCall) {
-        DispatchQueue.global(qos: DispatchQoS.QoSClass.default).async {
+        DispatchQueue.global(qos: .default).async {
             if let engine = self.audioEngine, engine.isRunning {
                 engine.stop()
                 self.recognitionRequest?.endAudio()
@@ -161,10 +174,10 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func getSupportedLanguages(_ call: CAPPluginCall) {
-        let supportedLanguages: Set<Locale>! = SFSpeechRecognizer.supportedLocales() as Set<Locale>
-        let languagesArr: NSMutableArray = NSMutableArray()
+        let supportedLanguages: Set<Locale> = SFSpeechRecognizer.supportedLocales()
+        let languagesArr = NSMutableArray()
 
-        for lang: Locale in supportedLanguages {
+        for lang in supportedLanguages {
             languagesArr.add(lang.identifier)
         }
 
@@ -201,10 +214,8 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
                             call.resolve(["speechRecognition": "denied"])
                         }
                     }
-                    break
                 case .denied, .restricted, .notDetermined:
                     self.checkPermissions(call)
-                    break
                 @unknown default:
                     self.checkPermissions(call)
                 }
