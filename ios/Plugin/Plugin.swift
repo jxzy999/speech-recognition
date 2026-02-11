@@ -79,6 +79,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
             // 3. 配置音频会话
             let audioSession = AVAudioSession.sharedInstance()
             do {
+                // 添加 .duckOthers 选项，允许与其他音频（如背景音乐）混音，避免中断或冲突等待
                 try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
                 try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             } catch {
@@ -182,6 +183,14 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
         audioEngine = nil
         speechRecognizer = nil
         recognitionRequest = nil
+
+        // 恢复音频会话，通知其他应用（或系统背景音乐）恢复播放
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            // 这里仅打印日志，不影响主流程
+            print("Failed to deactivate audio session: \(error)")
+        }
         
         self.notifyListeners("listeningState", data: ["status": "stopped"])
     }
