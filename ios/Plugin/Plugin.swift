@@ -22,7 +22,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
 
-    @objc func available(_ call: CAPPluginCall) {
+    @objc public func available(_ call: CAPPluginCall) {
         guard let recognizer = SFSpeechRecognizer() else {
             call.resolve([
                 "available": false
@@ -34,7 +34,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
         ])
     }
 
-    @objc func start(_ call: CAPPluginCall) {
+    @objc public func start(_ call: CAPPluginCall) {
         if self.audioEngine != nil {
             if self.audioEngine!.isRunning {
                 call.reject(self.messageOngoing)
@@ -142,7 +142,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func stop(_ call: CAPPluginCall) {
+    @objc public func stop(_ call: CAPPluginCall) {
         DispatchQueue.global(qos: DispatchQoS.QoSClass.default).async {
             if let engine = self.audioEngine, engine.isRunning {
                 engine.stop()
@@ -153,14 +153,14 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func isListening(_ call: CAPPluginCall) {
+    @objc public func isListening(_ call: CAPPluginCall) {
         let isListening = self.audioEngine?.isRunning ?? false
         call.resolve([
             "listening": isListening
         ])
     }
 
-    @objc func getSupportedLanguages(_ call: CAPPluginCall) {
+    @objc public func getSupportedLanguages(_ call: CAPPluginCall) {
         let supportedLanguages: Set<Locale>! = SFSpeechRecognizer.supportedLocales() as Set<Locale>
         let languagesArr: NSMutableArray = NSMutableArray()
 
