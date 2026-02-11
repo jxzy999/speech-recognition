@@ -79,7 +79,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
             // 3. 配置音频会话
             let audioSession = AVAudioSession.sharedInstance()
             do {
-                try audioSession.setCategory(.playAndRecord, mode: .measurement, options: .defaultToSpeaker)
+                try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
                 try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             } catch {
                 call.reject("音频会话配置失败: \(error.localizedDescription)")
