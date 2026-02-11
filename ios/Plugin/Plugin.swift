@@ -5,11 +5,9 @@ import Speech
 @objc(SpeechRecognition)
 public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
 
-    // --- Capacitor 8 SPM 注册标识符 ---
-    public let identifier = "SpeechRecognitionPlugin"
-    public let jsName = "SpeechRecognition"
+    public let identifier = "SpeechRecognitionPlugin" 
+    public let jsName = "SpeechRecognition" 
     
-    // --- 桥接方法映射 (替代了原来的 .m 文件) ---
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
@@ -23,9 +21,6 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
 
     let defaultMatches = 5
     let messageMissingPermission = "Missing permission"
-    let messageAccessDenied = "User denied access to speech recognition"
-    let messageRestricted = "Speech recognition restricted on this device"
-    let messageNotDetermined = "Speech recognition not determined on this device"
     let messageAccessDeniedMicrophone = "User denied access to microphone"
     let messageOngoing = "Ongoing speech recognition"
     let messageUnknown = "Unknown error occured"
@@ -36,187 +31,188 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
     private var recognitionTask: SFSpeechRecognitionTask?
 
     @objc public func available(_ call: CAPPluginCall) {
-        guard let recognizer = SFSpeechRecognizer() else {
-            call.resolve([
-                "available": false
-            ])
-            return
-        }
+        let recognizer = SFSpeechRecognizer()
         call.resolve([
-            "available": recognizer.isAvailable
+            "available": recognizer?.isAvailable ?? false
         ])
     }
 
     @objc public func start(_ call: CAPPluginCall) {
-        if self.audioEngine != nil {
-            if self.audioEngine!.isRunning {
-                call.reject(self.messageOngoing)
-                return
-            }
+        // 安全检查：如果引擎已经在运行，直接拒绝
+        if let engine = self.audioEngine, engine.isRunning {
+            call.reject(self.messageOngoing)
+            return
         }
 
-        let status: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
-        if status != SFSpeechRecognizerAuthorizationStatus.authorized {
+        let status = SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
+        if status != .authorized {
             call.reject(self.messageMissingPermission)
             return
         }
 
-        AVAudioSession.sharedInstance().requestRecordPermission { (granted) in
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] (granted) in
+            guard let self = self else { return }
+            
             if !granted {
                 call.reject(self.messageAccessDeniedMicrophone)
                 return
             }
 
-            let language: String = call.getString("language") ?? "en-US"
-            let maxResults: Int = call.getInt("maxResults") ?? self.defaultMatches
-            let partialResults: Bool = call.getBool("partialResults") ?? false
+            let language = call.getString("language") ?? "zh-CN"
+            let maxResults = call.getInt("maxResults") ?? self.defaultMatches
+            let partialResults = call.getBool("partialResults") ?? false
 
-            if self.recognitionTask != nil {
-                self.recognitionTask?.cancel()
-                self.recognitionTask = nil
-            }
+            // 1. 清理旧任务
+            self.stopCurrentRecording()
 
-            self.audioEngine = AVAudioEngine.init()
-            self.speechRecognizer = SFSpeechRecognizer.init(locale: Locale(identifier: language))
+            // 2. 初始化对象
+            let engine = AVAudioEngine()
+            let recognizer = SFSpeechRecognizer(locale: Locale(identifier: language))
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            
+            self.audioEngine = engine
+            self.speechRecognizer = recognizer
+            self.recognitionRequest = request
+            
+            request.shouldReportPartialResults = partialResults
 
-            let audioSession: AVAudioSession = AVAudioSession.sharedInstance()
+            // 3. 配置音频会话
+            let audioSession = AVAudioSession.sharedInstance()
             do {
-                try audioSession.setCategory(AVAudioSession.Category.playAndRecord, options: AVAudioSession.CategoryOptions.defaultToSpeaker)
-                try audioSession.setMode(AVAudioSession.Mode.default)
-                do {
-                    try audioSession.setActive(true, options: AVAudioSession.SetActiveOptions.notifyOthersOnDeactivation)
-                } catch {
-                      call.reject("Microphone is already in use by another application.")
-                      return
-                }
+                try audioSession.setCategory(.playAndRecord, mode: .measurement, options: .defaultToSpeaker)
+                try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             } catch {
-                // Ignore initial session errors
+                call.reject("音频会话配置失败: \(error.localizedDescription)")
+                return
             }
 
-            self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-            self.recognitionRequest?.shouldReportPartialResults = partialResults
+            // 4. 启动识别任务
+            guard let recognizer = self.speechRecognizer else {
+                call.reject("无法创建识别器")
+                return
+            }
 
-            let inputNode: AVAudioInputNode = self.audioEngine!.inputNode
-            let format: AVAudioFormat = inputNode.outputFormat(forBus: 0)
-
-            self.recognitionTask = self.speechRecognizer?.recognitionTask(with: self.recognitionRequest!, resultHandler: { (result, error) in
-                if result != nil {
-                    let resultArray: NSMutableArray = NSMutableArray()
-                    var counter: Int = 0
-
-                    for transcription: SFTranscription in result!.transcriptions {
-                        if maxResults > 0 && counter < maxResults {
+            self.recognitionTask = recognizer.recognitionTask(with: request) { [weak self] (result, error) in
+                guard let self = self else { return }
+                
+                if let result = result {
+                    let resultArray = NSMutableArray()
+                    for (index, transcription) in result.transcriptions.enumerated() {
+                        if maxResults > 0 && index < maxResults {
                             resultArray.add(transcription.formattedString)
                         }
-                        counter+=1
                     }
 
                     if partialResults {
                         self.notifyListeners("partialResults", data: ["matches": resultArray])
                     } else {
-                        call.resolve([
-                            "matches": resultArray
-                        ])
+                        if result.isFinal {
+                            call.resolve(["matches": resultArray])
+                        }
                     }
 
-                    if result!.isFinal {
-                        self.audioEngine?.stop()
-                        self.audioEngine?.inputNode.removeTap(onBus: 0)
-                        self.notifyListeners("listeningState", data: ["status": "stopped"])
-                        self.recognitionTask = nil
-                        self.recognitionRequest = nil
+                    if result.isFinal {
+                        self.stopCurrentRecording()
                     }
                 }
 
-                if error != nil {
-                    self.audioEngine?.stop()
-                    self.audioEngine?.inputNode.removeTap(onBus: 0)
-                    self.recognitionRequest = nil
-                    self.recognitionTask = nil
-                    self.notifyListeners("listeningState", data: ["status": "stopped"])
-                    call.reject(error!.localizedDescription)
+                if let error = error {
+                    self.stopCurrentRecording()
+                    // 过滤掉正常的取消错误，避免弹出不必要的报错
+                    let nsError = error as NSError
+                    if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 203 {
+                        // 203 是 "No speech detected"，我们可以选择 resolve 空结果或安静地提示
+                        self.notifyListeners("partialResults", data: ["matches": []])
+                    } else {
+                        call.reject(error.localizedDescription)
+                    }
                 }
-            })
-
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { (buffer: AVAudioPCMBuffer, _: AVAudioTime) in
-                self.recognitionRequest?.append(buffer)
             }
 
-            self.audioEngine?.prepare()
+            // 5. 配置麦克风输入 Tap
+            let inputNode = engine.inputNode
+            let recordingFormat = inputNode.outputFormat(forBus: 0)
+            
+            // 确保先移除旧的 Tap 防止崩溃
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, _) in
+                request.append(buffer)
+            }
+
+            // 6. 启动引擎
+            engine.prepare()
             do {
-                try self.audioEngine?.start()
+                try engine.start()
                 self.notifyListeners("listeningState", data: ["status": "started"])
                 if partialResults {
                     call.resolve()
                 }
             } catch {
-                call.reject(self.messageUnknown)
+                self.stopCurrentRecording()
+                call.reject("引擎启动失败: \(error.localizedDescription)")
             }
         }
     }
 
     @objc public func stop(_ call: CAPPluginCall) {
-        DispatchQueue.global(qos: .default).async {
-            if let engine = self.audioEngine, engine.isRunning {
-                engine.stop()
-                self.recognitionRequest?.endAudio()
-                self.notifyListeners("listeningState", data: ["status": "stopped"])
-            }
-            call.resolve()
-        }
+        self.stopCurrentRecording()
+        call.resolve()
     }
 
     @objc public func isListening(_ call: CAPPluginCall) {
-        let isListening = self.audioEngine?.isRunning ?? false
         call.resolve([
-            "listening": isListening
+            "listening": self.audioEngine?.isRunning ?? false
         ])
+    }
+
+    // --- 内部辅助方法：安全的停止录音 ---
+    private func stopCurrentRecording() {
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        if let engine = audioEngine {
+            if engine.isRunning {
+                engine.stop()
+                engine.inputNode.removeTap(onBus: 0)
+            }
+        }
+        
+        recognitionRequest?.endAudio()
+        
+        audioEngine = nil
+        speechRecognizer = nil
+        recognitionRequest = nil
+        
+        self.notifyListeners("listeningState", data: ["status": "stopped"])
     }
 
     @objc public func getSupportedLanguages(_ call: CAPPluginCall) {
-        let supportedLanguages: Set<Locale> = SFSpeechRecognizer.supportedLocales()
-        let languagesArr = NSMutableArray()
-
-        for lang in supportedLanguages {
-            languagesArr.add(lang.identifier)
-        }
-
-        call.resolve([
-            "languages": languagesArr
-        ])
+        let locales = SFSpeechRecognizer.supportedLocales()
+        let languages = locales.map { $0.identifier }
+        call.resolve(["languages": languages])
     }
 
     @objc override public func checkPermissions(_ call: CAPPluginCall) {
-        let status: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
+        let status = SFSpeechRecognizer.authorizationStatus()
         let permission: String
         switch status {
-        case .authorized:
-            permission = "granted"
-        case .denied, .restricted:
-            permission = "denied"
-        case .notDetermined:
-            permission = "prompt"
-        @unknown default:
-            permission = "prompt"
+        case .authorized: permission = "granted"
+        case .denied, .restricted: permission = "denied"
+        case .notDetermined: permission = "prompt"
+        @unknown default: permission = "prompt"
         }
         call.resolve(["speechRecognition": permission])
     }
 
     @objc override public func requestPermissions(_ call: CAPPluginCall) {
-        SFSpeechRecognizer.requestAuthorization { (status: SFSpeechRecognizerAuthorizationStatus) in
+        SFSpeechRecognizer.requestAuthorization { [weak self] (status) in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                switch status {
-                case .authorized:
-                    AVAudioSession.sharedInstance().requestRecordPermission { (granted: Bool) in
-                        if granted {
-                            call.resolve(["speechRecognition": "granted"])
-                        } else {
-                            call.resolve(["speechRecognition": "denied"])
-                        }
+                if status == .authorized {
+                    AVAudioSession.sharedInstance().requestRecordPermission { (granted) in
+                        call.resolve(["speechRecognition": granted ? "granted" : "denied"])
                     }
-                case .denied, .restricted, .notDetermined:
-                    self.checkPermissions(call)
-                @unknown default:
+                } else {
                     self.checkPermissions(call)
                 }
             }
