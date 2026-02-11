@@ -44,7 +44,7 @@ public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let status = SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
+        let status: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus()
         if status != .authorized {
             call.reject(self.messageMissingPermission)
             return
