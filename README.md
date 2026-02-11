@@ -102,12 +102,12 @@ SpeechRecognition.requestPermission();
 ### available()
 
 ```typescript
-available() => Promise<{ available: boolean; }>
+available() => any
 ```
 
 This method will check if speech recognition feature is available on the device.
 
-**Returns:** <code>Promise&lt;{ available: boolean; }&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -115,7 +115,7 @@ This method will check if speech recognition feature is available on the device.
 ### start(...)
 
 ```typescript
-start(options?: UtteranceOptions | undefined) => Promise<{ matches?: string[]; }>
+start(options?: UtteranceOptions | undefined) => any
 ```
 
 This method will start to listen for utterance.
@@ -127,7 +127,7 @@ event `partialResults` will be emit for each partial result, until stopped.
 | ------------- | ------------------------------------------------------------- |
 | **`options`** | <code><a href="#utteranceoptions">UtteranceOptions</a></code> |
 
-**Returns:** <code>Promise&lt;{ matches?: string[]; }&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -135,10 +135,12 @@ event `partialResults` will be emit for each partial result, until stopped.
 ### stop()
 
 ```typescript
-stop() => Promise<void>
+stop() => any
 ```
 
 This method will stop listening for utterance
+
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -146,14 +148,14 @@ This method will stop listening for utterance
 ### getSupportedLanguages()
 
 ```typescript
-getSupportedLanguages() => Promise<{ languages: any[]; }>
+getSupportedLanguages() => any
 ```
 
 This method will return list of languages supported by the speech recognizer.
 
 It's not available on Android 13 and newer.
 
-**Returns:** <code>Promise&lt;{ languages: any[]; }&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -161,12 +163,12 @@ It's not available on Android 13 and newer.
 ### isListening()
 
 ```typescript
-isListening() => Promise<{ listening: boolean; }>
+isListening() => any
 ```
 
 This method will check if speech recognition is listening.
 
-**Returns:** <code>Promise&lt;{ listening: boolean; }&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 5.1.0
 
@@ -176,12 +178,12 @@ This method will check if speech recognition is listening.
 ### checkPermissions()
 
 ```typescript
-checkPermissions() => Promise<PermissionStatus>
+checkPermissions() => any
 ```
 
 Check the speech recognition permission.
 
-**Returns:** <code>Promise&lt;<a href="#permissionstatus">PermissionStatus</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 5.0.0
 
@@ -191,12 +193,12 @@ Check the speech recognition permission.
 ### requestPermissions()
 
 ```typescript
-requestPermissions() => Promise<PermissionStatus>
+requestPermissions() => any
 ```
 
 Request the speech recognition permission.
 
-**Returns:** <code>Promise&lt;<a href="#permissionstatus">PermissionStatus</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 5.0.0
 
@@ -206,7 +208,7 @@ Request the speech recognition permission.
 ### addListener('partialResults', ...)
 
 ```typescript
-addListener(eventName: 'partialResults', listenerFunc: (data: { matches: string[]; }) => void) => Promise<PluginListenerHandle>
+addListener(eventName: 'partialResults', listenerFunc: (data: { matches: string[]; }) => void) => any
 ```
 
 Called when partialResults set to true and result received.
@@ -215,12 +217,12 @@ On Android it doesn't work if popup is true.
 
 Provides partial result.
 
-| Param              | Type                                                   |
-| ------------------ | ------------------------------------------------------ |
-| **`eventName`**    | <code>'partialResults'</code>                          |
-| **`listenerFunc`** | <code>(data: { matches: string[]; }) =&gt; void</code> |
+| Param              | Type                                             |
+| ------------------ | ------------------------------------------------ |
+| **`eventName`**    | <code>'partialResults'</code>                    |
+| **`listenerFunc`** | <code>(data: { matches: {}; }) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 2.0.2
 
@@ -230,7 +232,7 @@ Provides partial result.
 ### addListener('listeningState', ...)
 
 ```typescript
-addListener(eventName: 'listeningState', listenerFunc: (data: { status: 'started' | 'stopped'; }) => void) => Promise<PluginListenerHandle>
+addListener(eventName: 'listeningState', listenerFunc: (data: { status: 'started' | 'stopped'; }) => void) => any
 ```
 
 Called when listening state changed.
@@ -240,7 +242,7 @@ Called when listening state changed.
 | **`eventName`**    | <code>'listeningState'</code>                                       |
 | **`listenerFunc`** | <code>(data: { status: 'started' \| 'stopped'; }) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 5.1.0
 
@@ -250,10 +252,12 @@ Called when listening state changed.
 ### removeAllListeners()
 
 ```typescript
-removeAllListeners() => Promise<void>
+removeAllListeners() => any
 ```
 
 Remove all the listeners that are attached to this plugin.
+
+**Returns:** <code>any</code>
 
 **Since:** 4.0.0
 
@@ -283,9 +287,9 @@ Remove all the listeners that are attached to this plugin.
 
 #### PluginListenerHandle
 
-| Prop         | Type                                      |
-| ------------ | ----------------------------------------- |
-| **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
+| Prop         | Type                      |
+| ------------ | ------------------------- |
+| **`remove`** | <code>() =&gt; any</code> |
 
 
 ### Type Aliases
