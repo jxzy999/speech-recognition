@@ -3,7 +3,10 @@ import Capacitor
 import Speech
 
 @objc(SpeechRecognition)
-public class SpeechRecognition: CAPPlugin {
+public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
+
+    public let identifier = "SpeechRecognitionPlugin" 
+    public let jsName = "SpeechRecognition" 
 
     let defaultMatches = 5
     let messageMissingPermission = "Missing permission"
